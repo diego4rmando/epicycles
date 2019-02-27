@@ -136,31 +136,31 @@ def find_epicycles(n, poly_segments):
 
     return x_elems
 
-def update_animation(k,f_t_epicycles,lines,circles,trajectory,t_n_samples):
+def update_animation(k,shapes_epicycles,line_objects,circles_objects,trajectory_objects,t_n_samples):
 
     k_first_cycle = int(math.ceil(t_n_samples/2.0))
 
-    for i in range(len(f_t_epicycles)):
-        if i == 0:
-            seg_1_x = 0.0
-            seg_1_y = 0.0                
-        else:
-            seg_1_x = f_t_epicycles[i-1][k].real
-            seg_1_y = f_t_epicycles[i-1][k].imag
-        
-        seg_2_x = f_t_epicycles[i][k].real
-        seg_2_y = f_t_epicycles[i][k].imag    
+    for shape_idx,shape_epicycle in enumerate(shapes_epicycles):
 
-        lines[i].set_data([seg_1_x,seg_2_x], [seg_1_y,seg_2_y])
-        circles[i].center = (seg_2_x,seg_2_y)
+        for i in range(1,len(shape_epicycle['f_t'])):
+            seg_1_x = shape_epicycle['f_t'][i-1][k].real
+            seg_1_y = shape_epicycle['f_t'][i-1][k].imag
+            
+            seg_2_x = shape_epicycle['f_t'][i][k].real
+            seg_2_y = shape_epicycle['f_t'][i][k].imag    
 
-    if k < k_first_cycle:
-        trajectory[0].set_data(f_t_epicycles[-1][:k].real,f_t_epicycles[-1][:k].imag)
-    else:
-        k_delete=k-k_first_cycle
-        trajectory[0].set_data(f_t_epicycles[-1][k_delete:k_first_cycle].real,f_t_epicycles[-1][k_delete:k_first_cycle].imag)
+            line_objects[shape_idx][i].set_data([seg_1_x,seg_2_x], [seg_1_y,seg_2_y])
+            
+            circles_objects[shape_idx][i].center = (seg_1_x,seg_1_y)
 
-    return lines, circles, trajectory
+            # Create drawing over time in first half of animation, delete over time in second half of animation
+            if k < k_first_cycle:
+                trajectory_objects[shape_idx][0].set_data(shape_epicycle['f_t'][-1][:k].real,shape_epicycle['f_t'][-1][:k].imag)
+            else:
+                k_delete=k-k_first_cycle
+                trajectory_objects[shape_idx][0].set_data(shape_epicycle['f_t'][-1][k_delete:k_first_cycle].real,shape_epicycle['f_t'][-1][k_delete:k_first_cycle].imag)
+
+    return line_objects, circles_objects, trajectory_objects
 
 def animate(x_elem_shapes):
 
@@ -171,7 +171,7 @@ def animate(x_elem_shapes):
     # Create time vector
     num_cycles = 2
     t_final = 2*math.pi*num_cycles
-    t_n_samples = n*5                                  # MAY NEED TO CHANGE
+    t_n_samples = 100                           # MAY NEED TO CHANGE
     t = np.linspace(0.0,t_final,t_n_samples)   
     
     # Create epicycles array with f(t) info for each circular path in each shape
@@ -179,34 +179,53 @@ def animate(x_elem_shapes):
 
     dtype_obj = np.dtype([('x','complex'),('r','float'),('k','int'),('f_t','object')])
 
-    for x_elems in x_elem_shapes:
+    for x_elems_shape in x_elem_shapes:
 
         epicycles = np.array([],dtype=dtype_obj)
 
-        for idx,x_elem in enumerate(x_elems):
-            k = idx - math.floor(len(x_elems)/2)
+        for idx,x_elem in enumerate(x_elems_shape):
+            k = idx - math.floor(len(x_elems_shape)/2)
             r = np.absolute(x_elem)
             f_t = x_elem*np.exp(1j*k*t)
             epicycles = np.append(epicycles, np.array([(x_elem,r,k,f_t)],dtype=dtype_obj))
 
-        epicycle_static = epicycles[math.floor(len(x_elems)/2)]      # Extract element with zero rotation
-        epicycles = np.delete(epicycles,math.floor(len(x_elems)/2))  # Remove element with zero rotation
+        epicycle_static = epicycles[math.floor(len(x_elems_shape)/2)]      # Extract element with zero rotation
+        epicycles = np.delete(epicycles,math.floor(len(x_elems_shape)/2))  # Remove element with zero rotation
         epicycles.sort(axis=0,order=['r'])
+        epicycles = epicycles[::-1]
         epicycles = np.insert(epicycles, 0, epicycle_static)
-
-        # Find max radius for setting axis limits
-        r_epicycles_max = np.sum(epicycles['r'])
 
         # Find f(t) in inertial coordinate frame
         f_t_epicycles = np.cumsum(epicycles['f_t'])
 
+        for i,f_t_inertial in enumerate(f_t_epicycles):
+            epicycles[i]['f_t']=f_t_inertial
 
-    # Plotting
+        shapes_epicycles.append(epicycles)
+
+    # Find max radius for setting axis limits
+    epicycle_x_max = shapes_epicycles[0][-1]['f_t'][0].real
+    epicycle_x_min = shapes_epicycles[0][-1]['f_t'][0].real
+    epicycle_y_max = shapes_epicycles[0][-1]['f_t'][0].imag
+    epicycle_y_min = shapes_epicycles[0][-1]['f_t'][0].imag
+
+    for epicycles in shapes_epicycles:
+        for pt in epicycles[-1]['f_t']:
+            epicycle_x_max = max(epicycle_x_max,pt.real)
+            epicycle_x_min = min(epicycle_x_min,pt.real)
+            epicycle_y_max = max(epicycle_y_max,pt.imag)
+            epicycle_y_min = min(epicycle_y_min,pt.imag)
+
+    # Plot final trajectories
     fig2 = plt.figure(2)
     ax2 = fig2.add_subplot(1,1,1)
-    ax2.plot(f_t_epicycles[-1][:].real,f_t_epicycles[-1][:].imag)
+
+    for shape_epicycle in shapes_epicycles:
+        ax2.plot(shape_epicycle['f_t'][-1][:].real,shape_epicycle['f_t'][-1][:].imag)
+    
     ax2.axis('equal')
 
+    # Plot initial animation setup
     fig = plt.figure(1)
     ax = fig.add_subplot(1,1,1)
     ax.axis('equal')
@@ -221,27 +240,35 @@ def animate(x_elem_shapes):
     # line_color = 'b'
     circle_color = (0.9607843137254902, 0.9607843137254902, 0.8627450980392157,0.8)
     # circle_color = 'c'
-    trajectory = ax.plot(f_t_epicycles[-1][0].real,f_t_epicycles[-1][0].imag, color=trajectory_color)
-    lines = ax.plot([0.0,f_t_epicycles[0][0].real], [0.0,f_t_epicycles[0][0].imag], color=line_color)
-    circles = [ax.add_patch(patches.Circle((0.0,0.0), radius=epicycles['r'][0], fill=False, color=circle_color))]
 
-    for i in range(1,len(f_t_epicycles)):
-        seg_1_x = f_t_epicycles[i-1][0].real
-        seg_1_y = f_t_epicycles[i-1][0].imag
-        
-        seg_2_x = f_t_epicycles[i][0].real
-        seg_2_y = f_t_epicycles[i][0].imag    
+    trajectory_objects = []
+    line_objects = []
+    circles_objects = []
 
-        lines.append(ax.plot([seg_1_x,seg_2_x], [seg_1_y,seg_2_y], color=line_color)[0])
-        circles.append(ax.add_patch(patches.Circle((seg_2_x,seg_2_y), radius=epicycles['r'][i], fill=False, color=circle_color)))
+    for k,shape_epicycle in enumerate(shapes_epicycles):
+        trajectory_objects.append(ax.plot(shape_epicycle[-1]['f_t'][0].real,shape_epicycle[-1]['f_t'][0].imag, color=trajectory_color))
+        line_objects.append(ax.plot([shape_epicycle[0]['f_t'][0].real,shape_epicycle[0]['f_t'][1].real], [shape_epicycle[0]['f_t'][0].imag,shape_epicycle[0]['f_t'][1].imag], color=line_color))
+        circles_objects.append([ax.add_patch(patches.Circle((shape_epicycle['f_t'][0][0].real,shape_epicycle['f_t'][0][0].imag), radius=epicycles['r'][1], fill=False, color=circle_color))])
 
-    radii_sum = np.sum(epicycles['r'])
-    ax.axis([-radii_sum,radii_sum,-radii_sum,radii_sum])
+        # print 'point 1 = '+str((shape_epicycle['f_t'][0][0].real,shape_epicycle['f_t'][0][0].imag))
+        # print 'circle center = '+str(circles_objects[0][0].center)
 
-    animation_tics = np.array(range(len(f_t_epicycles[0])))
-    ani = animation.FuncAnimation(fig, update_animation,frames=animation_tics,fargs=(f_t_epicycles,lines,circles,trajectory,t_n_samples))
-    # ani.save('test.gif', writer='imagemagick', fps=24, dpi=75,savefig_kwargs={'transparent': True, 'facecolor': 'none'},extra_args={'transparent': True})
-    # ani.save('test.gif', writer='imagemagick', fps=24, dpi=75)
+        for i in range(1,len(shape_epicycle['f_t'])):
+            seg_1_x = shape_epicycle['f_t'][i-1][0].real
+            seg_1_y = shape_epicycle['f_t'][i-1][0].imag
+            
+            seg_2_x = shape_epicycle['f_t'][i][0].real
+            seg_2_y = shape_epicycle['f_t'][i][0].imag    
+
+            line_objects[k].append(ax.plot([seg_1_x,seg_2_x], [seg_1_y,seg_2_y], color=line_color)[0])
+            circles_objects[k].append(ax.add_patch(patches.Circle((seg_2_x,seg_2_y), radius=epicycles['r'][i], fill=False, color=circle_color)))
+
+    ax.axis([epicycle_x_min-200,epicycle_x_max+200,epicycle_y_min-200,epicycle_y_max+200])
+
+    animation_tics = np.array(range(len(shapes_epicycles[0]['f_t'][0])))
+    ani = animation.FuncAnimation(fig, update_animation,frames=animation_tics,fargs=(shapes_epicycles,line_objects,circles_objects,trajectory_objects,t_n_samples))
+    # # ani.save('test.gif', writer='imagemagick', fps=24, dpi=75,savefig_kwargs={'transparent': True, 'facecolor': 'none'},extra_args={'transparent': True})
+    # # ani.save('test.gif', writer='imagemagick', fps=24, dpi=75)
 
     plt.show()
 
