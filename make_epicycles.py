@@ -142,23 +142,25 @@ def update_animation(k,shapes_epicycles,line_objects,circles_objects,trajectory_
 
     for shape_idx,shape_epicycle in enumerate(shapes_epicycles):
 
-        for i in range(1,len(shape_epicycle['f_t'])):
+        # Create drawing over time in first half of animation, delete over time in second half of animation
+        if k < k_first_cycle:
+            trajectory_objects[shape_idx][0].set_data(shape_epicycle['f_t'][-1][:k+1].real,shape_epicycle['f_t'][-1][:k+1].imag)
+        else:
+            k_delete=k-k_first_cycle
+            trajectory_objects[shape_idx][0].set_data(shape_epicycle['f_t'][-1][k_delete:k_first_cycle].real,shape_epicycle['f_t'][-1][k_delete:k_first_cycle].imag)
+
+        for i, shape_epicycle_f_t in enumerate(shape_epicycle['f_t']):
+
             seg_1_x = shape_epicycle['f_t'][i-1][k].real
             seg_1_y = shape_epicycle['f_t'][i-1][k].imag
             
             seg_2_x = shape_epicycle['f_t'][i][k].real
             seg_2_y = shape_epicycle['f_t'][i][k].imag    
 
-            line_objects[shape_idx][i].set_data([seg_1_x,seg_2_x], [seg_1_y,seg_2_y])
-            
-            circles_objects[shape_idx][i].center = (seg_1_x,seg_1_y)
-
-            # Create drawing over time in first half of animation, delete over time in second half of animation
-            if k < k_first_cycle:
-                trajectory_objects[shape_idx][0].set_data(shape_epicycle['f_t'][-1][:k].real,shape_epicycle['f_t'][-1][:k].imag)
-            else:
-                k_delete=k-k_first_cycle
-                trajectory_objects[shape_idx][0].set_data(shape_epicycle['f_t'][-1][k_delete:k_first_cycle].real,shape_epicycle['f_t'][-1][k_delete:k_first_cycle].imag)
+            if i >= 1:
+                line_objects[shape_idx][i-1].set_data([seg_1_x,seg_2_x], [seg_1_y,seg_2_y])
+                
+                circles_objects[shape_idx][i-1].center = (seg_1_x,seg_1_y)
 
     return line_objects, circles_objects, trajectory_objects
 
@@ -245,23 +247,22 @@ def animate(x_elem_shapes):
     line_objects = []
     circles_objects = []
 
-    for k,shape_epicycle in enumerate(shapes_epicycles):
+    for shape_idx,shape_epicycle in enumerate(shapes_epicycles):
         trajectory_objects.append(ax.plot(shape_epicycle[-1]['f_t'][0].real,shape_epicycle[-1]['f_t'][0].imag, color=trajectory_color))
-        line_objects.append(ax.plot([shape_epicycle[0]['f_t'][0].real,shape_epicycle[0]['f_t'][1].real], [shape_epicycle[0]['f_t'][0].imag,shape_epicycle[0]['f_t'][1].imag], color=line_color))
-        circles_objects.append([ax.add_patch(patches.Circle((shape_epicycle['f_t'][0][0].real,shape_epicycle['f_t'][0][0].imag), radius=epicycles['r'][1], fill=False, color=circle_color))])
 
-        # print 'point 1 = '+str((shape_epicycle['f_t'][0][0].real,shape_epicycle['f_t'][0][0].imag))
-        # print 'circle center = '+str(circles_objects[0][0].center)
-
-        for i in range(1,len(shape_epicycle['f_t'])):
+        for i, shape_epicycle_f_t in enumerate(shape_epicycle['f_t']):
             seg_1_x = shape_epicycle['f_t'][i-1][0].real
             seg_1_y = shape_epicycle['f_t'][i-1][0].imag
-            
+        
             seg_2_x = shape_epicycle['f_t'][i][0].real
-            seg_2_y = shape_epicycle['f_t'][i][0].imag    
+            seg_2_y = shape_epicycle['f_t'][i][0].imag 
 
-            line_objects[k].append(ax.plot([seg_1_x,seg_2_x], [seg_1_y,seg_2_y], color=line_color)[0])
-            circles_objects[k].append(ax.add_patch(patches.Circle((seg_2_x,seg_2_y), radius=epicycles['r'][i], fill=False, color=circle_color)))
+            if i == 1:
+                line_objects.append(ax.plot([seg_1_x,seg_2_x], [seg_1_y,seg_2_y], color=line_color))
+                circles_objects.append([ax.add_patch(patches.Circle((seg_2_x,seg_2_y), radius=shape_epicycle['r'][i], fill=False, color=circle_color))])
+            elif i>1:  
+                line_objects[shape_idx].append(ax.plot([seg_1_x,seg_2_x], [seg_1_y,seg_2_y], color=line_color)[0])
+                circles_objects[shape_idx].append(ax.add_patch(patches.Circle((seg_2_x,seg_2_y), radius=shape_epicycle['r'][i], fill=False, color=circle_color)))
 
     ax.axis([epicycle_x_min-200,epicycle_x_max+200,epicycle_y_min-200,epicycle_y_max+200])
 
