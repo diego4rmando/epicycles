@@ -171,7 +171,7 @@ def animate(x_elem_shapes):
     # Create time vector
     num_cycles = 2
     t_final = 2*math.pi*num_cycles
-    t_n_samples = 200                           # MAY NEED TO CHANGE
+    t_n_samples = 100                           # MAY NEED TO CHANGE
     t = np.linspace(0.0,t_final,t_n_samples)   
     
     # Create epicycles array with f(t) info for each circular path in each shape
