@@ -1,4 +1,3 @@
-
 import math
 import argparse
 
@@ -8,6 +7,7 @@ from matplotlib import pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.path as path
 import matplotlib.animation as animation
+import csv
 
 from svgpathtools import svg2paths
 
@@ -164,7 +164,7 @@ def update_animation(k,shapes_epicycles,line_objects,circles_objects,trajectory_
 
     return line_objects, circles_objects, trajectory_objects
 
-def animate(x_elem_shapes):
+def animate(x_elem_shapes, svg_attributes, gif_filename, csv_filename, color_theme):
 
     num_paths = len(x_elem_shapes)
 
@@ -173,7 +173,7 @@ def animate(x_elem_shapes):
     # Create time vector
     num_cycles = 2
     t_final = 2*math.pi*num_cycles
-    t_n_samples = 100                           # MAY NEED TO CHANGE
+    t_n_samples = 300                           # MAY NEED TO CHANGE
     t = np.linspace(0.0,t_final,t_n_samples)   
     
     # Create epicycles array with f(t) info for each circular path in each shape
@@ -181,7 +181,7 @@ def animate(x_elem_shapes):
 
     dtype_obj = np.dtype([('x','complex'),('r','float'),('k','int'),('f_t','object')])
 
-    for x_elems_shape in x_elem_shapes:
+    for x_elems_shape, attributes_list in zip(x_elem_shapes,svg_attributes):
 
         epicycles = np.array([],dtype=dtype_obj)
 
@@ -218,37 +218,35 @@ def animate(x_elem_shapes):
             epicycle_y_max = max(epicycle_y_max,pt.imag)
             epicycle_y_min = min(epicycle_y_min,pt.imag)
 
-    # Plot final trajectories
-    fig2 = plt.figure(2)
-    ax2 = fig2.add_subplot(1,1,1)
-
-    for shape_epicycle in shapes_epicycles:
-        ax2.plot(shape_epicycle['f_t'][-1][:].real,shape_epicycle['f_t'][-1][:].imag)
-    
-    ax2.axis('equal')
+    # # Plot final trajectories
 
     # Plot initial animation setup
-    fig = plt.figure(1)
+    fig = plt.figure()
+    fig.patch.set_facecolor((0.96, 0.96, 1.0,1.0))
     ax = fig.add_subplot(1,1,1)
     ax.axis('equal')
-    ax.patch.set_facecolor((1.0, 1.0, 1.0,1.0))
+    ax.spines['top'].set_visible(False)
     ax.xaxis.set_visible(False)
     ax.yaxis.set_visible(False)
     ax.set_frame_on(False)
 
-    trajectory_color = (0.4,0.4,0.4,0.8)
-    # trajectory_color = 'r'
-    line_color = (0.8, 0.8, 1.0,0.5)
-    # line_color = 'b'
-    circle_color = (0.9607843137254902, 0.9607843137254902, 0.8627450980392157,0.8)
-    # circle_color = 'c'
+    if color_theme == 'electric_blue':
+        trajectory_color = (0.55,0.64,0.76,0.8)
+        line_color = (0.2, 0.52, 0.99,0.4)
+        circle_color = (0.8, 0.87, 0.99,0.4)
+    else:
+        trajectory_color = (0.5,0.5,0.5,0.5)
+        line_color = (0.75, 0.75, 0.75,0.5)
+        circle_color = (0.9, 0.9, 0.9,0.5)
 
     trajectory_objects = []
     line_objects = []
     circles_objects = []
 
-    for shape_idx,shape_epicycle in enumerate(shapes_epicycles):
-        trajectory_objects.append(ax.plot(shape_epicycle[-1]['f_t'][0].real,shape_epicycle[-1]['f_t'][0].imag, color=trajectory_color))
+    for shape_idx,(shape_epicycle, attributes) in enumerate(zip(shapes_epicycles, svg_attributes)):
+
+        shape_color = attributes.get('stroke',trajectory_color)
+        trajectory_objects.append(ax.plot(shape_epicycle[-1]['f_t'][0].real,shape_epicycle[-1]['f_t'][0].imag, color=shape_color))
 
         for i, shape_epicycle_f_t in enumerate(shape_epicycle['f_t']):
             seg_1_x = shape_epicycle['f_t'][i-1][0].real
@@ -264,12 +262,26 @@ def animate(x_elem_shapes):
                 line_objects[shape_idx].append(ax.plot([seg_1_x,seg_2_x], [seg_1_y,seg_2_y], color=line_color)[0])
                 circles_objects[shape_idx].append(ax.add_patch(patches.Circle((seg_2_x,seg_2_y), radius=shape_epicycle['r'][i], fill=False, color=circle_color)))
 
-    ax.axis([epicycle_x_min-200,epicycle_x_max+200,epicycle_y_min-200,epicycle_y_max+200])
+    ax.axis([epicycle_x_min,epicycle_x_max,epicycle_y_min,epicycle_y_max])
 
     animation_tics = np.array(range(len(shapes_epicycles[0]['f_t'][0])))
     ani = animation.FuncAnimation(fig, update_animation,frames=animation_tics,fargs=(shapes_epicycles,line_objects,circles_objects,trajectory_objects,t_n_samples))
-    # # ani.save('test.gif', writer='imagemagick', fps=24, dpi=75,savefig_kwargs={'transparent': True, 'facecolor': 'none'},extra_args={'transparent': True})
-    # # ani.save('test.gif', writer='imagemagick', fps=24, dpi=75)
+    
+    if gif_filename is not None:
+        if (gif_filename[-4:]) != '.gif':
+            gif_filename = gif_filename + '.gif'
+        ani.save(gif_filename, writer='imagemagick', fps=6, dpi=200)
+
+    if csv_filename is not None:
+        if (csv_filename[-4:]) != '.csv':
+            csv_filename = csv_filename + '.csv'
+        with open(csv_filename, mode='w') as csv_file:
+            csv_writer = csv.writer(csv_file, delimiter=',')
+            csv_writer.writerow(['shape_idx', 'k', 'x'])
+            for shape_idx, shape_info in enumerate(shapes_epicycles):
+                for epicycle_info in shape_info:
+                    csv_writer.writerow([shape_idx, epicycle_info['k'], epicycle_info['x']])
+            csv_file.close()
 
     plt.show()
 
@@ -282,16 +294,18 @@ def main(args):
     for path in svg_paths:
         poly_segments = poly_paths_from_svg(args.n, path)
         x_elem_shapes.append(find_epicycles(args.n, poly_segments))
-    
-    print x_elem_shapes
 
-    animate(x_elem_shapes)
+    animate(x_elem_shapes,svg_attributes,args.gif_filename, args.csv_filename, args.color_theme)
 
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('--filename', type=str, required=True, help='Name of the svg file to create epicycles for.')
+    parser.add_argument('filename', type=str, help='Name of the svg file to create epicycles for.')
     parser.add_argument('--n', type=int, required=True, help='Number of epicycles to approximate.')
+    parser.add_argument('--gif_filename',type=str, required=False, default=None)
+    parser.add_argument('--csv_filename',type=str, required=False, default=None)    
+    parser.add_argument('--color_theme',type=str, required=False, default=None)
+
     args = parser.parse_args()
 
     main(args)
