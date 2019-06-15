@@ -173,7 +173,7 @@ def animate(x_elem_shapes, svg_attributes, gif_filename, csv_filename, color_the
     # Create time vector
     num_cycles = 2
     t_final = 2*math.pi*num_cycles
-    t_n_samples = 300                           # MAY NEED TO CHANGE
+    t_n_samples = 400                           # MAY NEED TO CHANGE
     t = np.linspace(0.0,t_final,t_n_samples)   
     
     # Create epicycles array with f(t) info for each circular path in each shape
@@ -222,7 +222,7 @@ def animate(x_elem_shapes, svg_attributes, gif_filename, csv_filename, color_the
 
     # Plot initial animation setup
     fig = plt.figure()
-    fig.patch.set_facecolor((0.96, 0.96, 1.0,1.0))
+    fig.patch.set_facecolor((1.0, 1.0, 1.0,1.0))
     ax = fig.add_subplot(1,1,1)
     ax.axis('equal')
     ax.spines['top'].set_visible(False)
@@ -245,7 +245,11 @@ def animate(x_elem_shapes, svg_attributes, gif_filename, csv_filename, color_the
 
     for shape_idx,(shape_epicycle, attributes) in enumerate(zip(shapes_epicycles, svg_attributes)):
 
-        shape_color = attributes.get('stroke',trajectory_color)
+        if color_theme != 'electric_blue':
+            shape_color = attributes.get('stroke',trajectory_color)
+        else:
+            shape_color = trajectory_color
+
         trajectory_objects.append(ax.plot(shape_epicycle[-1]['f_t'][0].real,shape_epicycle[-1]['f_t'][0].imag, color=shape_color))
 
         for i, shape_epicycle_f_t in enumerate(shape_epicycle['f_t']):
@@ -302,9 +306,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', type=str, help='Name of the svg file to create epicycles for.')
     parser.add_argument('--n', type=int, required=True, help='Number of epicycles to approximate.')
-    parser.add_argument('--gif_filename',type=str, required=False, default=None)
-    parser.add_argument('--csv_filename',type=str, required=False, default=None)    
-    parser.add_argument('--color_theme',type=str, required=False, default=None)
+    parser.add_argument('--gif_filename',type=str, required=False, default=None, help='If this parameter is set, the animation will be output in .gif file of this name.')
+    parser.add_argument('--csv_filename',type=str, required=False, default=None, help='If this parameter is set, the list of Cn values will be output in .csv file of this name.')    
+    parser.add_argument('--color_theme',type=str, required=False, default=None, help='If this parameter is set to electric_blue the animation colors will be overriden to shades of blue.')
 
     args = parser.parse_args()
 
