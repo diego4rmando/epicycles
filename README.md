@@ -16,7 +16,7 @@ We can describe motion around a circle using the following equation.
 
 $$E(t)=(a+bi)e^{nit}$$
 
-Where $(a+bi)$ defines the diameter of the circular motion and where on the circle the cycle starts. $(n)$ defines how long it takes the cycle to complete, and which direction the cycle turns.
+Where $(a+bi)$ defines the diameter of the circular motion and where the circle the cycle starts. $n$ defines how long it takes the cycle to complete, and which direction the cycle turns.
 
 
 An epicycle trajecotry can be defined using a series of nested cycles with $n=-N,\ldots,-1,0,1,\ldots,N$ . We will see later why this is a convenient series of $n$ to choose. The trajectory of the epicycle is defined by the following equation:
