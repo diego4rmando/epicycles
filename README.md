@@ -94,15 +94,15 @@ The script can be found here:
 
 ## Results
 
-<img src="mano.gif" alt="Mano" width="600">
+<img src="examples/mano.gif" alt="Car" width="600"/>
 
 Figure 1 - Electric Blue Mano
 
-<img src="car_15.gif" alt="Car" width="600">
+<img src="examples/car_15.gif" alt="Car" width="600"/>
 
 Figure 2 - Car
 
-<img src="cactus.gif" alt="Cactus" width="600">
+<img src="examples/cactus.gif" alt="Cactus" width="600"/>
 
 Figure 3 - Cactus Flowers
 
